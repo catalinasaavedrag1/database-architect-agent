@@ -54,4 +54,11 @@ describe("postgresMetadataQueries", () => {
       expect(query).toContain("pg_catalog");
     }
   });
+
+  it("restricts the index query to user tables (no TOAST/system indexes)", () => {
+    // Regression: verified against a live Postgres, the index query was leaking
+    // pg_toast_* indexes until it excluded pg_toast and filtered relkind.
+    expect(postgresMetadataQueries.getIndexes).toContain("pg_toast");
+    expect(postgresMetadataQueries.getIndexes).toContain("relkind");
+  });
 });

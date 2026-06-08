@@ -83,7 +83,8 @@ export const postgresMetadataQueries = {
     JOIN pg_am am ON am.oid = i.relam
     JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ordinality) ON true
     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
-    WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+    WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+      AND t.relkind IN ('r', 'p')
       AND k.attnum <> 0
     ORDER BY n.nspname, t.relname, i.relname, k.ordinality;
   `,
