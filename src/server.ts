@@ -15,7 +15,7 @@ export function createApp() {
     res.json({
       status: 'ok',
       service: 'database-architect-agent',
-      environment: env.NODE_ENV,
+      environment: env.nodeEnv,
     });
   });
 
@@ -50,7 +50,7 @@ export function createApp() {
   return app;
 }
 
-export async function startHttpServer(port = env.PORT) {
+export async function startHttpServer(port = env.port) {
   const app = createApp();
 
   return new Promise<void>((resolve) => {
@@ -60,4 +60,3 @@ export async function startHttpServer(port = env.PORT) {
     });
   });
 }
-

@@ -1,10 +1,12 @@
 import { env } from './env';
-import type { DatabaseConfig } from '../types/database.types';
+import type { DatabaseConnectionConfig } from '../types/database.types';
 
-export const databaseConfig: DatabaseConfig = {
-  engine: env.DATABASE_ENGINE,
-  connectionString: env.DATABASE_URL,
-  ssl: env.DATABASE_SSL,
-  readOnly: env.DATABASE_READ_ONLY,
+export const databaseConfig: DatabaseConnectionConfig = {
+  host: env.database.host ?? '',
+  port: env.database.port,
+  database: env.database.name ?? '',
+  user: env.database.user ?? '',
+  password: env.database.password ?? '',
+  encrypt: env.database.encrypt,
+  trustServerCertificate: env.database.trustCert,
 };
-

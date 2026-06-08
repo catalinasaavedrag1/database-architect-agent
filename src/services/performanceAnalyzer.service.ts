@@ -1,5 +1,4 @@
-import { createDatabaseConnection } from '../database/connection';
-import { metadataQueries } from '../database/metadataQueries';
+import { explainQueryTool } from '../tools/explainQuery.tool';
 import { validateReadOnlySql } from '../safety/sqlGuard';
 
 export class PerformanceAnalyzerService {
@@ -8,29 +7,8 @@ export class PerformanceAnalyzerService {
   }
 
   async explainQuery(sqlText: string) {
-    const validation = validateReadOnlySql(sqlText);
-
-    if (!validation.allowed) {
-      return {
-        validation,
-        plan: null,
-      };
-    }
-
-    const client = await createDatabaseConnection();
-
-    try {
-      const result = await client.query(metadataQueries.explain(client.engine, sqlText));
-      return {
-        validation,
-        engine: client.engine,
-        plan: result.rows,
-      };
-    } finally {
-      await client.close();
-    }
+    return explainQueryTool({ query: sqlText });
   }
 }
 
 export const performanceAnalyzerService = new PerformanceAnalyzerService();
-

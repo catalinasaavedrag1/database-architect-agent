@@ -1,4 +1,15 @@
-export type DatabaseEngine = 'postgres' | 'sqlserver';
+export type DatabaseEngine = "sqlserver" | "postgres" | "mysql";
+
+export interface DatabaseConnectionConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
+}
+
 export type QueryParams = Record<string, unknown> | unknown[];
 
 export interface DatabaseConfig {
@@ -53,4 +64,3 @@ export interface IndexMetadata {
   columns?: string | null;
   definition?: string;
 }
-

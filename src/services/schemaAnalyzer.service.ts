@@ -1,72 +1,30 @@
-import { createDatabaseConnection } from '../database/connection';
-import { metadataQueries } from '../database/metadataQueries';
-import type { ColumnMetadata, DatabaseClient, IndexMetadata, RelationshipMetadata, TableMetadata } from '../types/database.types';
-
-type ClientFactory = () => Promise<DatabaseClient>;
+import { readColumnsTool } from '../tools/readColumns.tool';
+import { readIndexesTool } from '../tools/readIndexes.tool';
+import { readRelationshipsTool } from '../tools/readRelationships.tool';
+import { readSchemaTool } from '../tools/readSchema.tool';
+import { readTablesTool } from '../tools/readTables.tool';
 
 export class SchemaAnalyzerService {
-  constructor(private readonly clientFactory: ClientFactory = createDatabaseConnection) {}
-
   async readSchema(schema = 'public') {
-    const client = await this.clientFactory();
-
-    try {
-      const [tables, columns, relationships, indexes] = await Promise.all([
-        this.readTablesWithClient(client, schema),
-        this.readColumnsWithClient(client, schema),
-        this.readRelationshipsWithClient(client, schema),
-        this.readIndexesWithClient(client, schema),
-      ]);
-
-      return { schema, tables, columns, relationships, indexes };
-    } finally {
-      await client.close();
-    }
+    const snapshot = await readSchemaTool();
+    return { schema, ...snapshot };
   }
 
   async readTables(schema = 'public') {
-    const client = await this.clientFactory();
-
-    try {
-      return this.readTablesWithClient(client, schema);
-    } finally {
-      await client.close();
-    }
+    return readTablesTool({ schemaName: schema });
   }
 
   async readColumns(schema = 'public', tableName?: string) {
-    const client = await this.clientFactory();
-
-    try {
-      return this.readColumnsWithClient(client, schema, tableName);
-    } finally {
-      await client.close();
-    }
+    return readColumnsTool({ schemaName: schema, tableName });
   }
 
-  private async readTablesWithClient(client: DatabaseClient, schema: string) {
-    const result = await client.query<TableMetadata>(metadataQueries.tables(client.engine), { schema });
-    return result.rows;
+  async readRelationships(schema = 'public', tableName?: string) {
+    return readRelationshipsTool({ schemaName: schema, tableName });
   }
 
-  private async readColumnsWithClient(client: DatabaseClient, schema: string, tableName?: string) {
-    const result = await client.query<ColumnMetadata>(metadataQueries.columns(client.engine), {
-      schema,
-      tableName: tableName ?? null,
-    });
-    return result.rows;
-  }
-
-  private async readRelationshipsWithClient(client: DatabaseClient, schema: string) {
-    const result = await client.query<RelationshipMetadata>(metadataQueries.relationships(client.engine), { schema });
-    return result.rows;
-  }
-
-  private async readIndexesWithClient(client: DatabaseClient, schema: string) {
-    const result = await client.query<IndexMetadata>(metadataQueries.indexes(client.engine), { schema });
-    return result.rows;
+  async readIndexes(schema = 'public', tableName?: string) {
+    return readIndexesTool({ schemaName: schema, tableName });
   }
 }
 
 export const schemaAnalyzerService = new SchemaAnalyzerService();
-

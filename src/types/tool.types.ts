@@ -1,9 +1,15 @@
 export type JsonObject = Record<string, unknown>;
 
-export interface ToolDefinition<TInput extends JsonObject = JsonObject, TOutput = unknown> {
+export interface ToolDefinition<Input = unknown, Output = unknown> {
   name: string;
   description: string;
-  inputSchema: JsonObject;
-  handler(input: TInput): Promise<TOutput> | TOutput;
+  inputSchema?: JsonObject;
+  execute: (input: Input) => Promise<Output> | Output;
+  handler?: (input: Input) => Promise<Output> | Output;
 }
 
+export interface ToolExecutionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}

@@ -1,18 +1,36 @@
 export class AppError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode = 500,
-    public readonly details?: unknown,
-  ) {
+  public readonly statusCode: number;
+  public readonly isOperational: boolean;
+
+  constructor(message: string, statusCode = 500, isOperational = true) {
     super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
     this.name = 'AppError';
+    Object.setPrototypeOf(this, AppError.prototype);
   }
 }
 
-export class ApprovalRequiredError extends AppError {
-  constructor(message = 'This action requires explicit approval.', details?: unknown) {
-    super(message, 403, details);
-    this.name = 'ApprovalRequiredError';
+export class ValidationError extends AppError {
+  constructor(message: string) {
+    super(message, 400);
   }
 }
 
+export class DatabaseError extends AppError {
+  constructor(message: string) {
+    super(message, 500);
+  }
+}
+
+export class SecurityError extends AppError {
+  constructor(message: string) {
+    super(message, 403);
+  }
+}
+
+export class ApprovalRequiredError extends SecurityError {
+  constructor(message = 'This action requires explicit approval.') {
+    super(message);
+  }
+}

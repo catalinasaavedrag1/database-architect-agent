@@ -1,21 +1,34 @@
-import { schemaAnalyzerService } from '../services/schemaAnalyzer.service';
-import type { ToolDefinition } from '../types/tool.types';
+import { getDbConnection } from "../database/connection";
+import { metadataQueries } from "../database/metadataQueries";
+import { DatabaseColumn } from "./readSchema.tool";
 
-export const readColumnsTool: ToolDefinition = {
-  name: 'read_columns',
-  description: 'Read column metadata for a schema or single table.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      schema: { type: 'string', default: 'public' },
-      tableName: { type: 'string' },
-    },
-  },
-  async handler(input) {
-    return schemaAnalyzerService.readColumns(
-      String(input.schema ?? 'public'),
-      typeof input.tableName === 'string' ? input.tableName : undefined,
+export interface ReadColumnsInput {
+  schemaName?: string;
+  tableName?: string;
+}
+
+export async function readColumnsTool(
+  input: ReadColumnsInput = {}
+): Promise<DatabaseColumn[]> {
+  const pool = await getDbConnection();
+  const result = await pool
+    .request()
+    .query<DatabaseColumn>(metadataQueries.getColumns);
+  let columns: DatabaseColumn[] = [...result.recordset];
+
+  if (input.schemaName) {
+    columns = columns.filter(
+      (column) =>
+        column.schemaName.toLowerCase() === input.schemaName!.toLowerCase()
     );
-  },
-};
+  }
 
+  if (input.tableName) {
+    columns = columns.filter(
+      (column) =>
+        column.tableName.toLowerCase() === input.tableName!.toLowerCase()
+    );
+  }
+
+  return columns;
+}

@@ -1,17 +1,25 @@
-import { schemaAnalyzerService } from '../services/schemaAnalyzer.service';
-import type { ToolDefinition } from '../types/tool.types';
+import { getDbConnection } from "../database/connection";
+import { metadataQueries } from "../database/metadataQueries";
+import { DatabaseTable } from "./readSchema.tool";
 
-export const readTablesTool: ToolDefinition = {
-  name: 'read_tables',
-  description: 'Read table metadata for a schema.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      schema: { type: 'string', default: 'public' },
-    },
-  },
-  async handler(input) {
-    return schemaAnalyzerService.readTables(String(input.schema ?? 'public'));
-  },
-};
+export interface ReadTablesInput {
+  schemaName?: string;
+}
 
+export async function readTablesTool(
+  input: ReadTablesInput = {}
+): Promise<DatabaseTable[]> {
+  const pool = await getDbConnection();
+  const result = await pool
+    .request()
+    .query<DatabaseTable>(metadataQueries.getTables);
+
+  if (!input.schemaName) {
+    return result.recordset;
+  }
+
+  return result.recordset.filter(
+    (table) =>
+      table.schemaName.toLowerCase() === input.schemaName!.toLowerCase()
+  );
+}

@@ -1,7 +1,7 @@
 import { tools } from './tools';
 import type { ToolDefinition } from '../types/tool.types';
 
-export function createMcpServer(registry: ToolDefinition[] = tools) {
+export function createMcpServer(registry: ToolDefinition<Record<string, unknown>, unknown>[] = tools) {
   const toolMap = new Map(registry.map((tool) => [tool.name, tool]));
 
   return {
@@ -9,7 +9,7 @@ export function createMcpServer(registry: ToolDefinition[] = tools) {
       return registry.map(({ name, description, inputSchema }) => ({
         name,
         description,
-        inputSchema,
+        inputSchema: inputSchema ?? {},
       }));
     },
 
@@ -20,8 +20,7 @@ export function createMcpServer(registry: ToolDefinition[] = tools) {
         throw new Error(`Unknown tool: ${name}`);
       }
 
-      return tool.handler(input);
+      return tool.execute(input);
     },
   };
 }
-

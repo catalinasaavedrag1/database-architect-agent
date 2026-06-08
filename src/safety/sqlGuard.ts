@@ -1,47 +1,91 @@
-import { detectDestructiveQuery } from './destructiveQueryDetector';
+export type SqlRiskLevel = "SAFE" | "WARNING" | "DANGEROUS";
 
-export function validateReadOnlySql(sqlText: string) {
-  const trimmed = sqlText.trim();
-  const destructive = detectDestructiveQuery(trimmed);
-  const startsReadOnly = /^(select|with|explain)\b/i.test(trimmed);
-  const hasMultipleStatements = trimmed.split(';').filter((part) => part.trim().length > 0).length > 1;
+export interface SqlGuardResult {
+  isAllowed: boolean;
+  riskLevel: SqlRiskLevel;
+  reasons: string[];
+  requiresHumanApproval: boolean;
+}
 
-  if (!trimmed) {
+const dangerousPatterns: RegExp[] = [
+  /\bDROP\b/i,
+  /\bDELETE\b/i,
+  /\bTRUNCATE\b/i,
+  /\bALTER\b/i,
+  /\bUPDATE\b/i,
+  /\bINSERT\b/i,
+  /\bMERGE\b/i,
+  /\bCREATE\b/i,
+  /\bEXEC\b/i,
+  /\bEXECUTE\b/i,
+  /\bGRANT\b/i,
+  /\bREVOKE\b/i,
+  /\bDENY\b/i,
+];
+
+const suspiciousPatterns: RegExp[] = [
+  /--/i,
+  /\/\*/i,
+  /\*\//i,
+  /;/i,
+  /\bxp_/i,
+  /\bsp_configure\b/i,
+  /\bOPENROWSET\b/i,
+  /\bOPENDATASOURCE\b/i,
+];
+
+export function validateReadOnlySql(query: string): SqlGuardResult {
+  const normalizedQuery = query.trim();
+  const reasons: string[] = [];
+
+  if (!normalizedQuery) {
     return {
-      allowed: false,
-      reasons: ['SQL text is empty.'],
-      requiresApproval: false,
+      isAllowed: false,
+      riskLevel: "DANGEROUS",
+      reasons: ["Query is empty"],
+      requiresHumanApproval: true,
     };
   }
 
-  if (!startsReadOnly) {
-    return {
-      allowed: false,
-      reasons: ['Only SELECT, WITH, and EXPLAIN statements are allowed for read-only execution.'],
-      requiresApproval: destructive.destructive,
-    };
+  if (!/^SELECT\b/i.test(normalizedQuery) && !/^WITH\b/i.test(normalizedQuery)) {
+    reasons.push("Only SELECT or WITH queries are allowed");
   }
 
-  if (hasMultipleStatements) {
-    return {
-      allowed: false,
-      reasons: ['Multiple SQL statements are not allowed in read-only tool execution.'],
-      requiresApproval: destructive.destructive,
-    };
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(normalizedQuery)) {
+      reasons.push(`Dangerous SQL keyword detected: ${pattern.source}`);
+    }
   }
 
-  if (destructive.destructive) {
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(normalizedQuery)) {
+      reasons.push(`Suspicious SQL pattern detected: ${pattern.source}`);
+    }
+  }
+
+  if (reasons.length > 0) {
     return {
-      allowed: false,
-      reasons: destructive.reasons,
-      requiresApproval: true,
+      isAllowed: false,
+      riskLevel: "DANGEROUS",
+      reasons,
+      requiresHumanApproval: true,
     };
   }
 
   return {
-    allowed: true,
-    reasons: [],
-    requiresApproval: false,
+    isAllowed: true,
+    riskLevel: "SAFE",
+    reasons: ["Query is read-only"],
+    requiresHumanApproval: false,
   };
 }
 
+export function assertReadOnlySql(query: string): void {
+  const result = validateReadOnlySql(query);
+
+  if (!result.isAllowed) {
+    throw new Error(
+      `SQL query blocked by SqlGuard: ${result.reasons.join(", ")}`
+    );
+  }
+}

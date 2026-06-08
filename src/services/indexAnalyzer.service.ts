@@ -1,21 +1,8 @@
-import { createDatabaseConnection } from '../database/connection';
-import { metadataQueries } from '../database/metadataQueries';
-import type { DatabaseClient, IndexMetadata } from '../types/database.types';
-
-type ClientFactory = () => Promise<DatabaseClient>;
+import { readIndexesTool } from '../tools/readIndexes.tool';
 
 export class IndexAnalyzerService {
-  constructor(private readonly clientFactory: ClientFactory = createDatabaseConnection) {}
-
   async readIndexes(schema = 'public') {
-    const client = await this.clientFactory();
-
-    try {
-      const result = await client.query<IndexMetadata>(metadataQueries.indexes(client.engine), { schema });
-      return result.rows;
-    } finally {
-      await client.close();
-    }
+    return readIndexesTool({ schemaName: schema });
   }
 
   async suggestIndexes(sqlText: string, schema = 'public') {
@@ -50,4 +37,3 @@ export class IndexAnalyzerService {
 }
 
 export const indexAnalyzerService = new IndexAnalyzerService();
-

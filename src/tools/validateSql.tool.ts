@@ -1,18 +1,21 @@
-import { performanceAnalyzerService } from '../services/performanceAnalyzer.service';
-import type { ToolDefinition } from '../types/tool.types';
+import {
+  validateReadOnlySql,
+  SqlGuardResult,
+} from "../safety/sqlGuard";
 
-export const validateSqlTool: ToolDefinition = {
-  name: 'validate_sql',
-  description: 'Validate whether SQL is safe for read-only execution.',
-  inputSchema: {
-    type: 'object',
-    required: ['sql'],
-    properties: {
-      sql: { type: 'string' },
-    },
-  },
-  async handler(input) {
-    return performanceAnalyzerService.validateSql(String(input.sql ?? ''));
-  },
-};
+export interface ValidateSqlInput {
+  query: string;
+}
 
+export interface ValidateSqlOutput extends SqlGuardResult {
+  query: string;
+}
+
+export function validateSqlTool(input: ValidateSqlInput): ValidateSqlOutput {
+  const result = validateReadOnlySql(input.query);
+
+  return {
+    query: input.query,
+    ...result,
+  };
+}

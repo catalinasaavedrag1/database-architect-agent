@@ -1,34 +1,23 @@
-import dotenv from 'dotenv';
-import { z } from 'zod';
+import dotenv from "dotenv";
 
 dotenv.config();
 
-function booleanFromEnv(defaultValue: boolean) {
-  return z.preprocess((value) => {
-    if (value === undefined || value === null || value === '') {
-      return defaultValue;
-    }
+export const env = {
+  nodeEnv: process.env.NODE_ENV ?? "development",
+  port: Number(process.env.PORT ?? 3000),
+  database: {
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT ?? 1433),
+    name: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    encrypt: process.env.DB_ENCRYPT === "true",
+    trustCert: process.env.DB_TRUST_CERT === "true",
+  },
+  claude: {
+    apiKey: process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY,
+    model: process.env.CLAUDE_MODEL ?? "claude-3-5-sonnet-latest",
+  },
+};
 
-    if (typeof value === 'string') {
-      return ['1', 'true', 'yes', 'y'].includes(value.toLowerCase());
-    }
-
-    return value;
-  }, z.boolean());
-}
-
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
-  ANTHROPIC_API_KEY: z.string().optional(),
-  CLAUDE_MODEL: z.string().default('claude-sonnet-4-20250514'),
-  CLAUDE_MAX_TOKENS: z.coerce.number().int().positive().default(4096),
-  DATABASE_ENGINE: z.enum(['postgres', 'sqlserver']).default('postgres'),
-  DATABASE_URL: z.string().optional(),
-  DATABASE_SSL: booleanFromEnv(false),
-  DATABASE_READ_ONLY: booleanFromEnv(true),
-});
-
-export const env = envSchema.parse(process.env);
-export type Env = z.infer<typeof envSchema>;
-
+export type Env = typeof env;

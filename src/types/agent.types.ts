@@ -1,3 +1,8 @@
+export interface AgentMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
 export interface AgentRequest {
   task: string;
   schema?: string;
@@ -6,11 +11,13 @@ export interface AgentRequest {
 }
 
 export interface AgentResponse {
-  summary: string;
+  content?: string;
+  usedTools?: string[];
+  warnings?: string[];
+  summary?: string;
   findings?: string[];
-  recommendations: string[];
-  risks: string[];
-  sql: string[];
-  requiresApproval: boolean;
+  recommendations?: string[];
+  risks?: string[];
+  sql?: string[];
+  requiresApproval?: boolean;
 }
-

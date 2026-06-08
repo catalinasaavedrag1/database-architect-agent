@@ -1,148 +1,93 @@
-import type { DatabaseEngine } from '../types/database.types';
-
 export const metadataQueries = {
-  tables(engine: DatabaseEngine) {
-    if (engine === 'sqlserver') {
-      return `
-        SELECT
-          TABLE_SCHEMA AS schema_name,
-          TABLE_NAME AS table_name,
-          TABLE_TYPE AS table_type
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = @schema
-        ORDER BY TABLE_SCHEMA, TABLE_NAME
-      `;
-    }
-
-    return `
-      SELECT
-        table_schema AS schema_name,
-        table_name,
-        table_type
-      FROM information_schema.tables
-      WHERE table_schema = @schema
-      ORDER BY table_schema, table_name
-    `;
-  },
-
-  columns(engine: DatabaseEngine) {
-    if (engine === 'sqlserver') {
-      return `
-        SELECT
-          TABLE_SCHEMA AS schema_name,
-          TABLE_NAME AS table_name,
-          COLUMN_NAME AS column_name,
-          DATA_TYPE AS data_type,
-          IS_NULLABLE AS is_nullable,
-          COLUMN_DEFAULT AS column_default,
-          ORDINAL_POSITION AS ordinal_position
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = @schema
-          AND (@tableName IS NULL OR TABLE_NAME = @tableName)
-        ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
-      `;
-    }
-
-    return `
-      SELECT
-        table_schema AS schema_name,
-        table_name,
-        column_name,
-        data_type,
-        is_nullable,
-        column_default,
-        ordinal_position
-      FROM information_schema.columns
-      WHERE table_schema = @schema
-        AND (@tableName IS NULL OR table_name = @tableName)
-      ORDER BY table_schema, table_name, ordinal_position
-    `;
-  },
-
-  relationships(engine: DatabaseEngine) {
-    if (engine === 'sqlserver') {
-      return `
-        SELECT
-          fk.name AS constraint_name,
-          SCHEMA_NAME(tp.schema_id) AS schema_name,
-          tp.name AS table_name,
-          cp.name AS column_name,
-          tr.name AS referenced_table_name,
-          cr.name AS referenced_column_name
-        FROM sys.foreign_keys fk
-        INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-        INNER JOIN sys.tables tp ON fkc.parent_object_id = tp.object_id
-        INNER JOIN sys.columns cp ON fkc.parent_object_id = cp.object_id AND fkc.parent_column_id = cp.column_id
-        INNER JOIN sys.tables tr ON fkc.referenced_object_id = tr.object_id
-        INNER JOIN sys.columns cr ON fkc.referenced_object_id = cr.object_id AND fkc.referenced_column_id = cr.column_id
-        WHERE SCHEMA_NAME(tp.schema_id) = @schema
-        ORDER BY tp.name, fk.name
-      `;
-    }
-
-    return `
-      SELECT
-        tc.constraint_name,
-        tc.table_schema AS schema_name,
-        tc.table_name,
-        kcu.column_name,
-        ccu.table_name AS referenced_table_name,
-        ccu.column_name AS referenced_column_name
-      FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu
-        ON tc.constraint_name = kcu.constraint_name
-       AND tc.table_schema = kcu.table_schema
-      JOIN information_schema.constraint_column_usage ccu
-        ON ccu.constraint_name = tc.constraint_name
-       AND ccu.table_schema = tc.table_schema
-      WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = @schema
-      ORDER BY tc.table_name, tc.constraint_name
-    `;
-  },
-
-  indexes(engine: DatabaseEngine) {
-    if (engine === 'sqlserver') {
-      return `
-        SELECT
-          SCHEMA_NAME(t.schema_id) AS schema_name,
-          t.name AS table_name,
-          i.name AS index_name,
-          i.is_unique,
-          i.type_desc AS index_type,
-          STRING_AGG(c.name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) AS columns
-        FROM sys.indexes i
-        INNER JOIN sys.tables t ON i.object_id = t.object_id
-        INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-        INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-        WHERE SCHEMA_NAME(t.schema_id) = @schema
-          AND i.name IS NOT NULL
-        GROUP BY t.schema_id, t.name, i.name, i.is_unique, i.type_desc
-        ORDER BY t.name, i.name
-      `;
-    }
-
-    return `
-      SELECT
-        schemaname AS schema_name,
-        tablename AS table_name,
-        indexname AS index_name,
-        indexdef AS definition,
-        false AS is_unique,
-        'btree' AS index_type,
-        NULL AS columns
-      FROM pg_indexes
-      WHERE schemaname = @schema
-      ORDER BY tablename, indexname
-    `;
-  },
-
-  explain(engine: DatabaseEngine, sqlText: string) {
-    if (engine === 'sqlserver') {
-      return `SET SHOWPLAN_TEXT ON; ${sqlText}; SET SHOWPLAN_TEXT OFF;`;
-    }
-
-    return `EXPLAIN (FORMAT JSON) ${sqlText}`;
-  },
+  getTables: `
+    SELECT 
+      TABLE_SCHEMA AS schemaName,
+      TABLE_NAME AS tableName,
+      TABLE_TYPE AS tableType
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_TYPE = 'BASE TABLE'
+    ORDER BY TABLE_SCHEMA, TABLE_NAME;
+  `,
+  getColumns: `
+    SELECT 
+      c.TABLE_SCHEMA AS schemaName,
+      c.TABLE_NAME AS tableName,
+      c.COLUMN_NAME AS columnName,
+      c.DATA_TYPE AS dataType,
+      c.CHARACTER_MAXIMUM_LENGTH AS maxLength,
+      c.NUMERIC_PRECISION AS numericPrecision,
+      c.NUMERIC_SCALE AS numericScale,
+      c.IS_NULLABLE AS isNullable,
+      c.COLUMN_DEFAULT AS defaultValue,
+      c.ORDINAL_POSITION AS ordinalPosition
+    FROM INFORMATION_SCHEMA.COLUMNS c
+    ORDER BY c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION;
+  `,
+  getPrimaryKeys: `
+    SELECT 
+      KU.TABLE_SCHEMA AS schemaName,
+      KU.TABLE_NAME AS tableName,
+      KU.COLUMN_NAME AS columnName,
+      TC.CONSTRAINT_NAME AS constraintName
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC
+    INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KU
+      ON TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
+      AND TC.TABLE_SCHEMA = KU.TABLE_SCHEMA
+      AND TC.TABLE_NAME = KU.TABLE_NAME
+    WHERE TC.CONSTRAINT_TYPE = 'PRIMARY KEY'
+    ORDER BY KU.TABLE_SCHEMA, KU.TABLE_NAME, KU.ORDINAL_POSITION;
+  `,
+  getForeignKeys: `
+    SELECT
+      fk.name AS foreignKeyName,
+      sch1.name AS schemaName,
+      tab1.name AS tableName,
+      col1.name AS columnName,
+      sch2.name AS referencedSchemaName,
+      tab2.name AS referencedTableName,
+      col2.name AS referencedColumnName
+    FROM sys.foreign_key_columns fkc
+    INNER JOIN sys.foreign_keys fk 
+      ON fkc.constraint_object_id = fk.object_id
+    INNER JOIN sys.tables tab1 
+      ON fkc.parent_object_id = tab1.object_id
+    INNER JOIN sys.schemas sch1 
+      ON tab1.schema_id = sch1.schema_id
+    INNER JOIN sys.columns col1 
+      ON fkc.parent_object_id = col1.object_id 
+      AND fkc.parent_column_id = col1.column_id
+    INNER JOIN sys.tables tab2 
+      ON fkc.referenced_object_id = tab2.object_id
+    INNER JOIN sys.schemas sch2 
+      ON tab2.schema_id = sch2.schema_id
+    INNER JOIN sys.columns col2 
+      ON fkc.referenced_object_id = col2.object_id 
+      AND fkc.referenced_column_id = col2.column_id
+    ORDER BY sch1.name, tab1.name, fk.name;
+  `,
+  getIndexes: `
+    SELECT
+      s.name AS schemaName,
+      t.name AS tableName,
+      i.name AS indexName,
+      i.type_desc AS indexType,
+      i.is_unique AS isUnique,
+      i.is_primary_key AS isPrimaryKey,
+      c.name AS columnName,
+      ic.key_ordinal AS keyOrdinal,
+      ic.is_included_column AS isIncludedColumn
+    FROM sys.indexes i
+    INNER JOIN sys.tables t 
+      ON i.object_id = t.object_id
+    INNER JOIN sys.schemas s 
+      ON t.schema_id = s.schema_id
+    INNER JOIN sys.index_columns ic 
+      ON i.object_id = ic.object_id 
+      AND i.index_id = ic.index_id
+    INNER JOIN sys.columns c 
+      ON ic.object_id = c.object_id 
+      AND ic.column_id = c.column_id
+    WHERE i.name IS NOT NULL
+    ORDER BY s.name, t.name, i.name, ic.key_ordinal;
+  `,
 };
-
