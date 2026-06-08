@@ -1,5 +1,6 @@
 import { tools } from './tools';
 import { getRegisteredTool, registeredTools } from './toolRegistry';
+import { evaluateToolPermission } from '../safety/toolPermission';
 import { withTimeout } from '../utils/withTimeout';
 import type { ToolDefinition } from '../types/tool.types';
 
@@ -35,6 +36,8 @@ export function createMcpServer(registry: ToolDefinition<Record<string, unknown>
 export interface McpToolCallRequest {
   toolName: string;
   input?: unknown;
+  /** Explicit human approval for tools outside the read-only allowlist. */
+  approved?: boolean;
 }
 
 export interface McpToolCallResponse {
@@ -43,6 +46,7 @@ export interface McpToolCallResponse {
   data?: unknown;
   error?: string;
   durationMs?: number;
+  requiresApproval?: boolean;
 }
 
 const TOOL_TIMEOUT_MS = 30_000;
@@ -65,6 +69,18 @@ export async function callMcpTool(
       success: false,
       toolName: request.toolName,
       error: `Tool not found: ${request.toolName}`,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  const permission = evaluateToolPermission(tool.name, request.approved);
+
+  if (!permission.allowed) {
+    return {
+      success: false,
+      toolName: request.toolName,
+      error: permission.reason,
+      requiresApproval: true,
       durationMs: Date.now() - startedAt,
     };
   }
