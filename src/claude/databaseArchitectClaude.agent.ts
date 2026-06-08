@@ -11,12 +11,17 @@ import type {
 
 export interface ClaudeDatabaseArchitectInput {
   question: string;
+  /** Safety bound on the tool-use loop. Defaults to {@link DEFAULT_MAX_ITERATIONS}. */
+  maxIterations?: number;
 }
+
+const DEFAULT_MAX_ITERATIONS = 10;
 
 export async function runClaudeDatabaseArchitect(
   input: ClaudeDatabaseArchitectInput
 ): Promise<string> {
   const claudeClient = getClaudeClient();
+  const maxIterations = input.maxIterations ?? DEFAULT_MAX_ITERATIONS;
 
   const messages: MessageParam[] = [
     {
@@ -25,7 +30,7 @@ export async function runClaudeDatabaseArchitect(
     },
   ];
 
-  while (true) {
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
     const response = await claudeClient.messages.create({
       model: env.claude.model,
       max_tokens: 4000,
@@ -64,4 +69,8 @@ export async function runClaudeDatabaseArchitect(
       content: toolResults,
     });
   }
+
+  throw new Error(
+    `Claude database architect exceeded ${maxIterations} tool-use iterations without producing a final answer`
+  );
 }

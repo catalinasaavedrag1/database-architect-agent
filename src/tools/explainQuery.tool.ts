@@ -1,3 +1,4 @@
+import sql from "mssql";
 import { getDbConnection } from "../database/connection";
 import { assertReadOnlySql } from "../safety/sqlGuard";
 
@@ -16,12 +17,22 @@ export async function explainQueryTool(
 ): Promise<ExplainQueryOutput> {
   assertReadOnlySql(input.query);
   const pool = await getDbConnection();
-  const request = pool.request();
 
-  await request.query("SET SHOWPLAN_XML ON;");
+  // `SET SHOWPLAN_XML ON`, the analysed query, and `SET SHOWPLAN_XML OFF` must
+  // all run on the SAME physical connection. A pooled `pool.request()` can hand
+  // out a different connection per call, which would leave a connection stuck in
+  // plan-only mode. A transaction pins one connection for its whole lifetime, so
+  // we route every batch through it. Under SHOWPLAN_XML the query is only
+  // compiled (never executed), so the transaction does no data work.
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+
+  const request = transaction.request();
 
   try {
-    const result = await request.query(input.query);
+    await request.batch("SET SHOWPLAN_XML ON;");
+
+    const result = await request.batch(input.query);
     const firstRow = result.recordset?.[0];
     const estimatedPlanXml =
       firstRow && Object.values(firstRow).length > 0
@@ -33,6 +44,14 @@ export async function explainQueryTool(
       estimatedPlanXml,
     };
   } finally {
-    await pool.request().query("SET SHOWPLAN_XML OFF;");
+    try {
+      await request.batch("SET SHOWPLAN_XML OFF;");
+    } catch {
+      // Best effort: the connection is released when the transaction settles.
+    }
+
+    await transaction
+      .commit()
+      .catch(() => transaction.rollback().catch(() => undefined));
   }
 }
