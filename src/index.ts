@@ -1,12 +1,12 @@
-import { databaseArchitectAgent } from "./agent/databaseArchitect.agent";
+import { runDatabaseArchitect } from "./agent/databaseArchitect.agent";
 
 async function main() {
-  const result = await databaseArchitectAgent({
+  const result = await runDatabaseArchitect({
     userQuestion: "Analiza el modelo de datos y detecta problemas de relaciones.",
     includeSchema: true,
   });
 
-  console.log(result.agentInstruction);
+  console.log(result.analysis ?? result.agentInstruction);
 }
 
 if (require.main === module) {
@@ -18,4 +18,8 @@ if (require.main === module) {
 
 export { createApp, startHttpServer } from "./server";
 export { createMcpServer } from "./mcp/mcpServer";
-export { databaseArchitectAgent, DatabaseArchitectAgent } from "./agent/databaseArchitect.agent";
+export {
+  databaseArchitectAgent,
+  runDatabaseArchitect,
+  DatabaseArchitectAgent,
+} from "./agent/databaseArchitect.agent";

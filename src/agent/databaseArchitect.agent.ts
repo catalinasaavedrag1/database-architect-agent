@@ -1,5 +1,6 @@
 import { DATABASE_ARCHITECT_SYSTEM_PROMPT } from "./systemPrompt";
 import { readSchemaTool, FullDatabaseSchema } from "../tools/readSchema.tool";
+import { claudeConfig, createClaudeClient } from "../config/claude";
 
 export interface DatabaseArchitectRequest {
   userQuestion: string;
@@ -11,6 +12,8 @@ export interface DatabaseArchitectResponse {
   userQuestion: string;
   schema?: FullDatabaseSchema;
   agentInstruction: string;
+  /** Respuesta de Claude. Solo presente cuando se ejecuta `runDatabaseArchitect`. */
+  analysis?: string;
 }
 
 export async function databaseArchitectAgent(
@@ -45,7 +48,6 @@ function buildAgentInstruction(
   const schemaText = schema ? summarizeSchema(schema) : "No schema provided.";
 
   return `
-${DATABASE_ARCHITECT_SYSTEM_PROMPT}
 # User Question
 ${userQuestion}
 # Database Schema Context
@@ -125,8 +127,39 @@ ${indexesSummary || "No indexes found."}
 `;
 }
 
+/**
+ * Construye el prompt y además lo envía a Claude, devolviendo su análisis en
+ * `analysis`. Requiere `CLAUDE_API_KEY` (o `ANTHROPIC_API_KEY`) configurada.
+ */
+export async function runDatabaseArchitect(
+  request: DatabaseArchitectRequest
+): Promise<DatabaseArchitectResponse> {
+  const built = await databaseArchitectAgent(request);
+  const client = createClaudeClient();
+
+  const message = await client.messages.create({
+    model: claudeConfig.model,
+    max_tokens: claudeConfig.maxTokens,
+    system: built.systemPrompt,
+    messages: [{ role: "user", content: built.agentInstruction }],
+  });
+
+  const analysis = message.content
+    .map((block) => (block.type === "text" ? block.text : ""))
+    .join("")
+    .trim();
+
+  return { ...built, analysis };
+}
+
 export class DatabaseArchitectAgent {
-  async analyze(request: DatabaseArchitectRequest): Promise<DatabaseArchitectResponse> {
+  /** Construye el prompt sin llamar a Claude (útil para inspección y tests). */
+  async build(request: DatabaseArchitectRequest): Promise<DatabaseArchitectResponse> {
     return databaseArchitectAgent(request);
+  }
+
+  /** Construye el prompt y lo ejecuta contra Claude. */
+  async analyze(request: DatabaseArchitectRequest): Promise<DatabaseArchitectResponse> {
+    return runDatabaseArchitect(request);
   }
 }
