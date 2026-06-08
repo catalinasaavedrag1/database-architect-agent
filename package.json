@@ -6,10 +6,16 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node src/index.ts",
+    "server": "ts-node src/bin/serve.ts",
+    "chat": "ts-node src/cli/chat.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "example:analyze": "ts-node examples/analyze-schema.example.ts",
+    "example:validate": "ts-node examples/validate-sql.example.ts",
+    "example:document": "ts-node examples/document-schema.example.ts",
+    "example:ask": "ts-node examples/ask-claude.example.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

@@ -1,5 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { DatabaseArchitectAgent } from './agent/databaseArchitect.agent';
+import { handleDatabaseArchitectQuestion } from './api/databaseArchitect.controller';
 import { env } from './config/env';
 import { createMcpServer } from './mcp/mcpServer';
 import { logger } from './utils/logger';
@@ -39,6 +40,11 @@ export function createApp() {
     } catch (error) {
       next(error);
     }
+  });
+
+  app.post('/agent/database-architect', async (req: Request, res: Response) => {
+    const result = await handleDatabaseArchitectQuestion(req.body);
+    res.status(result.success ? 200 : 400).json(result);
   });
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

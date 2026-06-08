@@ -7,3 +7,13 @@ export const responseFormat = {
   requiresApproval: 'true when SQL can mutate data, schema, roles, or permissions.',
 };
 
+export const DATABASE_ARCHITECT_RESPONSE_FORMAT = `
+## Diagnóstico
+## Riesgos
+## Recomendación
+## Modelo propuesto
+## SQL sugerido
+## Validaciones necesarias
+## Observaciones
+`;
+
