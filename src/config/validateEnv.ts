@@ -11,9 +11,10 @@ const EnvSchema = z.object({
   DB_PASSWORD: z.string().min(1),
   DB_ENCRYPT: z.string().default("false"),
   DB_TRUST_CERT: z.string().default("true"),
-  // Optional so read-only endpoints (e.g. GET /tools) can run without it;
-  // the Claude client validates the key lazily when the agent is invoked.
-  CLAUDE_API_KEY: z.string().min(1).optional(),
+  // Optional (and tolerant of an empty .env placeholder) so read-only
+  // entrypoints (HTTP /tools, the MCP server) can run without it; the Claude
+  // client validates the key lazily when the agent is actually invoked.
+  CLAUDE_API_KEY: z.string().optional(),
   CLAUDE_MODEL: z.string().default("claude-3-5-sonnet-latest"),
 });
 
