@@ -30,10 +30,10 @@ cp .env.example .env
 npm run dev
 ```
 
-`npm run dev` ejecuta `src/index.ts`, que construye una instrucción para el
-agente a partir del esquema configurado y la imprime por consola. Para levantar
-el servidor HTTP en su lugar, usa `startHttpServer()` (exportado desde
-`src/server.ts` y desde la raíz del paquete).
+`npm run dev` ejecuta `src/index.ts`, que **levanta el servidor HTTP** (modo
+servicio) en `PORT`. Para usar el agente de forma programática sin servidor,
+importa `runDatabaseArchitect()` / `databaseArchitectAgent()` desde la raíz del
+paquete.
 
 ## Configuración
 
@@ -115,8 +115,13 @@ esquema del ms a revisar por una de estas vías (en orden de prioridad):
 
 - `schema` — metadata ya introspectada (`FullDatabaseSchema`). Universal.
 - `prismaSchema` — el contenido de un `schema.prisma` (se parsea solo).
+- `sqlDdl` — un script DDL de SQL Server (`CREATE TABLE`...), se parsea solo.
 - `sqlServer` — conexión read-only a un ms en SQL Server (se introspecta al vuelo).
 - `includeSchema` — lee la BD propia del agente (por defecto).
+
+Si defines `INTERNAL_API_KEY`, los endpoints `/tools` y `/agent/analyze` exigen
+el header `x-internal-api-key` (auth servicio-a-servicio). `npm run start`
+levanta el servidor HTTP en `PORT`.
 
 Útil para auditar servicios Prisma/PostgreSQL **y** migrar servicios legacy de
 SQL Server a PostgreSQL/Prisma. Guía completa con ejemplos en

@@ -18,6 +18,8 @@ export const env = {
     apiKey: process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY,
     model: process.env.CLAUDE_MODEL ?? "claude-sonnet-4-6",
   },
+  /** API key para autenticación servicio-a-servicio. Si está vacía, los endpoints quedan abiertos (solo dev). */
+  internalApiKey: process.env.INTERNAL_API_KEY,
 };
 
 export type Env = typeof env;

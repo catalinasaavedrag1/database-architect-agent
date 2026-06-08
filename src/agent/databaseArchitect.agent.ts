@@ -1,6 +1,7 @@
 import { DATABASE_ARCHITECT_SYSTEM_PROMPT } from "./systemPrompt";
 import { readSchemaTool, FullDatabaseSchema } from "../tools/readSchema.tool";
 import { parsePrismaSchema } from "../database/prismaSchemaParser";
+import { parseSqlServerDdl } from "../database/sqlServerDdlParser";
 import {
   introspectSqlServer,
   type SqlServerConnectionConfig,
@@ -15,6 +16,8 @@ export interface DatabaseArchitectRequest {
   schema?: FullDatabaseSchema;
   /** Contenido de un `schema.prisma` del ms a revisar. Se parsea a `FullDatabaseSchema`. */
   prismaSchema?: string;
+  /** DDL de SQL Server (`CREATE TABLE`...) del ms a revisar. Se parsea a `FullDatabaseSchema`. */
+  sqlDdl?: string;
   /** Conexión read-only a un ms en SQL Server: se introspecta al vuelo. */
   sqlServer?: SqlServerConnectionConfig;
   /** Si no se pasa otra fuente, lee la BD propia del agente. Default: true. */
@@ -34,26 +37,32 @@ export interface DatabaseArchitectResponse {
 export async function databaseArchitectAgent(
   request: DatabaseArchitectRequest
 ): Promise<DatabaseArchitectResponse> {
-  const { userQuestion, serviceName, prismaSchema, sqlServer, includeSchema = true } = request;
+  const { userQuestion, serviceName, prismaSchema, sqlDdl, sqlServer, includeSchema = true } =
+    request;
 
   if (!userQuestion || userQuestion.trim().length === 0) {
     throw new Error("User question is required");
   }
 
   // Resolución del esquema a analizar, de mayor a menor prioridad:
-  // 1) schema explícito  2) schema.prisma  3) conexión SQL Server del ms
-  // 4) BD propia del agente (includeSchema)
+  // 1) schema explícito  2) schema.prisma  3) DDL de SQL Server
+  // 4) conexión SQL Server del ms  5) BD propia del agente (includeSchema)
   let schema: FullDatabaseSchema | undefined = request.schema;
 
   if (!schema && prismaSchema && prismaSchema.trim().length > 0) {
     schema = parsePrismaSchema(prismaSchema);
   }
 
+  if (!schema && sqlDdl && sqlDdl.trim().length > 0) {
+    schema = parseSqlServerDdl(sqlDdl);
+  }
+
   if (!schema && sqlServer) {
     schema = await introspectSqlServer(sqlServer);
   }
 
-  if (!schema && !prismaSchema && !sqlServer && includeSchema) {
+  const hasExplicitSource = Boolean(prismaSchema || sqlDdl || sqlServer);
+  if (!schema && !hasExplicitSource && includeSchema) {
     schema = await readSchemaTool();
   }
 

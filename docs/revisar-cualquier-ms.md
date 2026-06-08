@@ -8,8 +8,9 @@ a analizar desde **cuatro fuentes**, en este orden de prioridad:
 | --------- | ---------------- | --------------------------------------------------------------------- |
 | 1         | `schema`         | Metadata ya introspectada (`FullDatabaseSchema`). Universal.          |
 | 2         | `prismaSchema`   | Contenido de un `schema.prisma`. Se parsea automáticamente.           |
-| 3         | `sqlServer`      | Conexión read-only a un ms en SQL Server: se introspecta al vuelo.    |
-| 4         | `includeSchema`  | Lee la **BD propia** del agente (comportamiento por defecto).         |
+| 3         | `sqlDdl`         | Script DDL de SQL Server (`CREATE TABLE`...). Se parsea automáticamente. |
+| 4         | `sqlServer`      | Conexión read-only a un ms en SQL Server: se introspecta al vuelo.    |
+| 5         | `includeSchema`  | Lee la **BD propia** del agente (comportamiento por defecto).         |
 
 Campos comunes: `userQuestion` (requerido) y `serviceName` (opcional, contexto).
 
@@ -51,10 +52,23 @@ curl -X POST http://database-architect-agent:3000/agent/analyze \
   }'
 ```
 
+## 2b. Microservicio legacy del que solo tienes el `.sql`
+
+Si no tienes acceso a la BD pero sí el script DDL, mándalo en `sqlDdl`:
+
+```jsonc
+{
+  "serviceName": "legacy-inventory",
+  "userQuestion": "Revisa el modelo y detecta tablas que mezclan responsabilidades.",
+  "sqlDdl": "CREATE TABLE dbo.Orders ( OrderId INT PRIMARY KEY, ... );"
+}
+```
+
 ## 3. Migrar SQL Server → PostgreSQL/Prisma
 
-Misma llamada que el caso 2, pero pidiéndolo en la pregunta. El agente usa el
-esquema **real** de SQL Server como base y propone el modelo destino:
+Misma llamada que el caso 2 (o 2b con `sqlDdl`), pero pidiéndolo en la pregunta.
+El agente usa el esquema **real** de SQL Server como base y propone el modelo
+destino:
 
 ```jsonc
 {
@@ -72,6 +86,26 @@ esquema **real** de SQL Server como base y propone el modelo destino:
 Si introspectas el esquema por tu cuenta (otro motor, dump, etc.), envíalo tal
 cual en `schema` con la forma `FullDatabaseSchema`
 (`tables`, `columns`, `primaryKeys`, `foreignKeys`, `indexes`).
+
+## Autenticación servicio-a-servicio
+
+Si defines `INTERNAL_API_KEY`, los endpoints `/tools` y `/agent/analyze` exigen
+el header `x-internal-api-key`; sin él responden `401`. `/health` queda siempre
+abierto. Si la variable no está definida, los endpoints quedan abiertos (solo
+para desarrollo) y el servidor registra una advertencia al arrancar.
+
+```bash
+curl -X POST http://database-architect-agent:3000/agent/analyze \
+  -H "Content-Type: application/json" \
+  -H "x-internal-api-key: $INTERNAL_API_KEY" \
+  -d '{ "serviceName": "orders-service", "userQuestion": "...", "prismaSchema": "..." }'
+```
+
+## Levantar el agente como servicio
+
+`npm run start` (o `node dist/src/index.js`) arranca el servidor HTTP en `PORT`
+(default `3000`). En `docker-compose` agrégalo como un servicio más para que los
+demás lo alcancen por hostname.
 
 ## Notas
 

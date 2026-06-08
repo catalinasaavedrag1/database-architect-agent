@@ -1,12 +1,9 @@
-import { runDatabaseArchitect } from "./agent/databaseArchitect.agent";
+import { startHttpServer } from "./server";
 
 async function main() {
-  const result = await runDatabaseArchitect({
-    userQuestion: "Analiza el modelo de datos y detecta problemas de relaciones.",
-    includeSchema: true,
-  });
-
-  console.log(result.analysis ?? result.agentInstruction);
+  // Modo servicio: levanta el servidor HTTP para que otros microservicios
+  // llamen a /agent/analyze y /tools/:name.
+  await startHttpServer();
 }
 
 if (require.main === module) {
