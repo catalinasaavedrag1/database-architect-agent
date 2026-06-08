@@ -1,3 +1,4 @@
+import type { ConnectionPool } from "mssql";
 import { getDbConnection } from "../database/connection";
 import { metadataQueries } from "../database/metadataQueries";
 
@@ -58,7 +59,13 @@ export interface FullDatabaseSchema {
 }
 
 export async function readSchemaTool(): Promise<FullDatabaseSchema> {
-  const pool = await getDbConnection();
+  return readSchemaFromPool(await getDbConnection());
+}
+
+/** Lee el esquema de SQL Server usando un pool de conexión arbitrario. */
+export async function readSchemaFromPool(
+  pool: ConnectionPool
+): Promise<FullDatabaseSchema> {
   const [
     tablesResult,
     columnsResult,

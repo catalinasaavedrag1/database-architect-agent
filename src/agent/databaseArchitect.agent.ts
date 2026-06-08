@@ -1,15 +1,30 @@
 import { DATABASE_ARCHITECT_SYSTEM_PROMPT } from "./systemPrompt";
 import { readSchemaTool, FullDatabaseSchema } from "../tools/readSchema.tool";
+import { parsePrismaSchema } from "../database/prismaSchemaParser";
+import {
+  introspectSqlServer,
+  type SqlServerConnectionConfig,
+} from "../database/introspectSqlServer";
 import { claudeConfig, createClaudeClient } from "../config/claude";
 
 export interface DatabaseArchitectRequest {
   userQuestion: string;
+  /** Nombre del microservicio bajo revisión (solo para contexto del prompt). */
+  serviceName?: string;
+  /** Esquema ya introspectado del ms a revisar. Tiene prioridad sobre el resto. */
+  schema?: FullDatabaseSchema;
+  /** Contenido de un `schema.prisma` del ms a revisar. Se parsea a `FullDatabaseSchema`. */
+  prismaSchema?: string;
+  /** Conexión read-only a un ms en SQL Server: se introspecta al vuelo. */
+  sqlServer?: SqlServerConnectionConfig;
+  /** Si no se pasa otra fuente, lee la BD propia del agente. Default: true. */
   includeSchema?: boolean;
 }
 
 export interface DatabaseArchitectResponse {
   systemPrompt: string;
   userQuestion: string;
+  serviceName?: string;
   schema?: FullDatabaseSchema;
   agentInstruction: string;
   /** Respuesta de Claude. Solo presente cuando se ejecuta `runDatabaseArchitect`. */
@@ -19,23 +34,35 @@ export interface DatabaseArchitectResponse {
 export async function databaseArchitectAgent(
   request: DatabaseArchitectRequest
 ): Promise<DatabaseArchitectResponse> {
-  const { userQuestion, includeSchema = true } = request;
+  const { userQuestion, serviceName, prismaSchema, sqlServer, includeSchema = true } = request;
 
   if (!userQuestion || userQuestion.trim().length === 0) {
     throw new Error("User question is required");
   }
 
-  let schema: FullDatabaseSchema | undefined;
+  // Resolución del esquema a analizar, de mayor a menor prioridad:
+  // 1) schema explícito  2) schema.prisma  3) conexión SQL Server del ms
+  // 4) BD propia del agente (includeSchema)
+  let schema: FullDatabaseSchema | undefined = request.schema;
 
-  if (includeSchema) {
+  if (!schema && prismaSchema && prismaSchema.trim().length > 0) {
+    schema = parsePrismaSchema(prismaSchema);
+  }
+
+  if (!schema && sqlServer) {
+    schema = await introspectSqlServer(sqlServer);
+  }
+
+  if (!schema && !prismaSchema && !sqlServer && includeSchema) {
     schema = await readSchemaTool();
   }
 
-  const agentInstruction = buildAgentInstruction(userQuestion, schema);
+  const agentInstruction = buildAgentInstruction(userQuestion, schema, serviceName);
 
   return {
     systemPrompt: DATABASE_ARCHITECT_SYSTEM_PROMPT,
     userQuestion,
+    serviceName,
     schema,
     agentInstruction,
   };
@@ -43,11 +70,13 @@ export async function databaseArchitectAgent(
 
 function buildAgentInstruction(
   userQuestion: string,
-  schema?: FullDatabaseSchema
+  schema?: FullDatabaseSchema,
+  serviceName?: string
 ): string {
   const schemaText = schema ? summarizeSchema(schema) : "No schema provided.";
+  const serviceLine = serviceName ? `\n# Microservicio bajo revisión\n${serviceName}` : "";
 
-  return `
+  return `${serviceLine}
 # User Question
 ${userQuestion}
 # Database Schema Context

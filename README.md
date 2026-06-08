@@ -82,7 +82,7 @@ NODE_ENV=development
 | GET    | `/health`        | Estado del servicio y del entorno                    |
 | GET    | `/tools`         | Lista las herramientas MCP registradas y sus schemas |
 | POST   | `/tools/:name`   | Invoca una herramienta por nombre con un body JSON   |
-| POST   | `/agent/analyze` | Ejecuta el agente arquitecto sobre una pregunta      |
+| POST   | `/agent/analyze` | Ejecuta el agente arquitecto sobre cualquier ms      |
 
 ### Ejemplos de uso
 
@@ -100,13 +100,27 @@ curl -X POST http://localhost:3000/tools/validate_sql \
   -d '{ "query": "SELECT id, status FROM orders WHERE status = '\''open'\''" }'
 ```
 
-Pedirle un análisis al agente:
+Pedirle un análisis al agente (sobre su propia BD):
 
 ```bash
 curl -X POST http://localhost:3000/agent/analyze \
   -H "Content-Type: application/json" \
   -d '{ "userQuestion": "Analiza el modelo de datos y detecta problemas de relaciones.", "includeSchema": true }'
 ```
+
+### Revisar / migrar cualquier microservicio
+
+El agente es genérico: además de su propia BD, `POST /agent/analyze` acepta el
+esquema del ms a revisar por una de estas vías (en orden de prioridad):
+
+- `schema` — metadata ya introspectada (`FullDatabaseSchema`). Universal.
+- `prismaSchema` — el contenido de un `schema.prisma` (se parsea solo).
+- `sqlServer` — conexión read-only a un ms en SQL Server (se introspecta al vuelo).
+- `includeSchema` — lee la BD propia del agente (por defecto).
+
+Útil para auditar servicios Prisma/PostgreSQL **y** migrar servicios legacy de
+SQL Server a PostgreSQL/Prisma. Guía completa con ejemplos en
+[`docs/revisar-cualquier-ms.md`](docs/revisar-cualquier-ms.md).
 
 ## Herramientas
 
