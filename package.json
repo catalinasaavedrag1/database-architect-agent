@@ -15,7 +15,9 @@
     "example:analyze": "ts-node examples/analyze-schema.example.ts",
     "example:validate": "ts-node examples/validate-sql.example.ts",
     "example:document": "ts-node examples/document-schema.example.ts",
-    "example:ask": "ts-node examples/ask-claude.example.ts"
+    "example:ask": "ts-node examples/ask-claude.example.ts",
+    "health": "ts-node examples/health.example.ts",
+    "tool": "ts-node examples/call-tool.example.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

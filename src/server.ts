@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { DatabaseArchitectAgent } from './agent/databaseArchitect.agent';
 import { handleDatabaseArchitectQuestion } from './api/databaseArchitect.controller';
 import { env } from './config/env';
+import { getHealthStatus } from './health/health.service';
 import { createMcpServer } from './mcp/mcpServer';
 import { logger } from './utils/logger';
 
@@ -12,12 +13,17 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }));
 
-  app.get('/health', (_req: Request, res: Response) => {
-    res.json({
-      status: 'ok',
-      service: 'database-architect-agent',
-      environment: env.nodeEnv,
-    });
+  app.get('/health', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const health = await getHealthStatus();
+      res.status(health.status === 'ok' ? 200 : 503).json({
+        ...health,
+        service: 'database-architect-agent',
+        environment: env.nodeEnv,
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get('/tools', (_req: Request, res: Response) => {

@@ -3,6 +3,7 @@ import { claudeDatabaseTools } from "./claudeTools";
 import { executeClaudeTool } from "./toolExecutor";
 import { DATABASE_ARCHITECT_SYSTEM_PROMPT } from "../agent/systemPrompt";
 import { env } from "../config/env";
+import { safeStringify } from "../utils/safeJson";
 import type {
   MessageParam,
   ToolResultBlockParam,
@@ -42,7 +43,7 @@ export async function runClaudeDatabaseArchitect(
         toolResults.push({
           type: "tool_result",
           tool_use_id: block.id,
-          content: JSON.stringify(toolResult, null, 2),
+          content: safeStringify(toolResult),
         });
       }
     }

@@ -1,5 +1,6 @@
 import { tools } from './tools';
 import { getRegisteredTool, registeredTools } from './toolRegistry';
+import { withTimeout } from '../utils/withTimeout';
 import type { ToolDefinition } from '../types/tool.types';
 
 export function createMcpServer(registry: ToolDefinition<Record<string, unknown>, unknown>[] = tools) {
@@ -41,7 +42,10 @@ export interface McpToolCallResponse {
   toolName: string;
   data?: unknown;
   error?: string;
+  durationMs?: number;
 }
+
+const TOOL_TIMEOUT_MS = 30_000;
 
 export function listMcpTools() {
   return registeredTools.map((tool) => ({
@@ -53,6 +57,7 @@ export function listMcpTools() {
 export async function callMcpTool(
   request: McpToolCallRequest
 ): Promise<McpToolCallResponse> {
+  const startedAt = Date.now();
   const tool = getRegisteredTool(request.toolName);
 
   if (!tool) {
@@ -60,6 +65,7 @@ export async function callMcpTool(
       success: false,
       toolName: request.toolName,
       error: `Tool not found: ${request.toolName}`,
+      durationMs: Date.now() - startedAt,
     };
   }
 
@@ -70,22 +76,29 @@ export async function callMcpTool(
       success: false,
       toolName: request.toolName,
       error: parsedInput.error.message,
+      durationMs: Date.now() - startedAt,
     };
   }
 
   try {
-    const data = await tool.execute(parsedInput.data as never);
+    const data = await withTimeout(
+      Promise.resolve(tool.execute(parsedInput.data as never)),
+      TOOL_TIMEOUT_MS,
+      `tool:${tool.name}`
+    );
 
     return {
       success: true,
       toolName: request.toolName,
       data,
+      durationMs: Date.now() - startedAt,
     };
   } catch (error) {
     return {
       success: false,
       toolName: request.toolName,
       error: error instanceof Error ? error.message : "Unknown tool error",
+      durationMs: Date.now() - startedAt,
     };
   }
 }
