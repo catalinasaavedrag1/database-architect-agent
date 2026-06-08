@@ -1,6 +1,5 @@
-import { getDbConnection } from "../database/connection";
-import { metadataQueries } from "../database/metadataQueries";
-import { DatabaseTable } from "./readSchema.tool";
+import { readTablesMetadata } from "../database/metadataReader";
+import type { DatabaseTable } from "./readSchema.tool";
 
 export interface ReadTablesInput {
   schemaName?: string;
@@ -9,16 +8,13 @@ export interface ReadTablesInput {
 export async function readTablesTool(
   input: ReadTablesInput = {}
 ): Promise<DatabaseTable[]> {
-  const pool = await getDbConnection();
-  const result = await pool
-    .request()
-    .query<DatabaseTable>(metadataQueries.getTables);
+  const tables = await readTablesMetadata();
 
   if (!input.schemaName) {
-    return result.recordset;
+    return tables;
   }
 
-  return result.recordset.filter(
+  return tables.filter(
     (table) =>
       table.schemaName.toLowerCase() === input.schemaName!.toLowerCase()
   );

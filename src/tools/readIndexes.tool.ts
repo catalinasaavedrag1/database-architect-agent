@@ -1,6 +1,5 @@
-import { getDbConnection } from "../database/connection";
-import { metadataQueries } from "../database/metadataQueries";
-import { DatabaseIndex } from "./readSchema.tool";
+import { readIndexesMetadata } from "../database/metadataReader";
+import type { DatabaseIndex } from "./readSchema.tool";
 
 export interface ReadIndexesInput {
   schemaName?: string;
@@ -10,11 +9,7 @@ export interface ReadIndexesInput {
 export async function readIndexesTool(
   input: ReadIndexesInput = {}
 ): Promise<DatabaseIndex[]> {
-  const pool = await getDbConnection();
-  const result = await pool
-    .request()
-    .query<DatabaseIndex>(metadataQueries.getIndexes);
-  let indexes: DatabaseIndex[] = [...result.recordset];
+  let indexes: DatabaseIndex[] = [...(await readIndexesMetadata())];
 
   if (input.schemaName) {
     indexes = indexes.filter(

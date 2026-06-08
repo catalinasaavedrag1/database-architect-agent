@@ -20,11 +20,14 @@ cp .env.example .env
 npm run dev
 ```
 
-Configure SQL Server access in `.env`:
+Configure database access in `.env`. Both **SQL Server** and **PostgreSQL** are
+supported; select the engine with `DB_ENGINE` (the metadata reader runs the
+engine-appropriate queries and returns the same shapes either way):
 
 ```text
+DB_ENGINE=sqlserver   # or "postgres"
 DB_HOST=localhost
-DB_PORT=1433
+DB_PORT=1433          # use 5432 for postgres
 DB_NAME=YourDatabaseName
 DB_USER=your_user
 DB_PASSWORD=your_password

@@ -1,6 +1,5 @@
-import { getDbConnection } from "../database/connection";
-import { metadataQueries } from "../database/metadataQueries";
-import { DatabaseColumn } from "./readSchema.tool";
+import { readColumnsMetadata } from "../database/metadataReader";
+import type { DatabaseColumn } from "./readSchema.tool";
 
 export interface ReadColumnsInput {
   schemaName?: string;
@@ -10,11 +9,7 @@ export interface ReadColumnsInput {
 export async function readColumnsTool(
   input: ReadColumnsInput = {}
 ): Promise<DatabaseColumn[]> {
-  const pool = await getDbConnection();
-  const result = await pool
-    .request()
-    .query<DatabaseColumn>(metadataQueries.getColumns);
-  let columns: DatabaseColumn[] = [...result.recordset];
+  let columns: DatabaseColumn[] = [...(await readColumnsMetadata())];
 
   if (input.schemaName) {
     columns = columns.filter(
