@@ -20,11 +20,14 @@ cp .env.example .env
 npm run dev
 ```
 
-Configure SQL Server access in `.env`:
+Configure database access in `.env`. Both **SQL Server** and **PostgreSQL** are
+supported; select the engine with `DB_ENGINE` (the metadata reader runs the
+engine-appropriate queries and returns the same shapes either way):
 
 ```text
+DB_ENGINE=sqlserver   # or "postgres"
 DB_HOST=localhost
-DB_PORT=1433
+DB_PORT=1433          # use 5432 for postgres
 DB_NAME=YourDatabaseName
 DB_USER=your_user
 DB_PASSWORD=your_password
@@ -35,10 +38,32 @@ DB_TRUST_CERT=true
 ## Scripts
 
 - `npm run dev`: run the TypeScript test entrypoint
+- `npm run server`: start the HTTP API server
+- `npm run mcp`: start the MCP server over stdio
+- `npm run chat`: interactive REPL against the Claude agent
 - `npm run build`: compile TypeScript into `dist/`
 - `npm run start`: run compiled output
 - `npm run typecheck`: run TypeScript without emitting files
 - `npm test`: run Vitest
+
+## MCP Server
+
+The tool registry is exposed over the Model Context Protocol (stdio) via
+`npm run mcp`, so MCP clients (e.g. Claude Desktop) can call the database tools
+directly. Each tool reuses the same Zod validation, read-only permission guard
+and execution timeout as the HTTP API. Example client config:
+
+```json
+{
+  "mcpServers": {
+    "database-architect": {
+      "command": "npx",
+      "args": ["ts-node", "src/bin/mcp.ts"],
+      "env": { "DB_ENGINE": "sqlserver", "DB_HOST": "localhost", "DB_NAME": "YourDb", "DB_USER": "user", "DB_PASSWORD": "pass" }
+    }
+  }
+}
+```
 
 ## Safety Model
 

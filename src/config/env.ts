@@ -6,6 +6,9 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 3000),
   database: {
+    engine: (process.env.DB_ENGINE === "postgres" ? "postgres" : "sqlserver") as
+      | "postgres"
+      | "sqlserver",
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT ?? 1433),
     name: process.env.DB_NAME,

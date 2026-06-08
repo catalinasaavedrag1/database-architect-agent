@@ -1,4 +1,5 @@
 import { readIndexesTool } from '../tools/readIndexes.tool';
+import { FullDatabaseSchema } from '../tools/readSchema.tool';
 
 export class IndexAnalyzerService {
   async readIndexes(schema = 'public') {
@@ -37,3 +38,36 @@ export class IndexAnalyzerService {
 }
 
 export const indexAnalyzerService = new IndexAnalyzerService();
+
+export interface IndexAnalysisResult {
+  tablesWithoutIndexes: string[];
+  duplicatedIndexNames: string[];
+  indexedTables: string[];
+}
+
+export function analyzeIndexes(schema: FullDatabaseSchema): IndexAnalysisResult {
+  const indexedTables = new Set<string>();
+  const indexNameCount = new Map<string, number>();
+
+  for (const index of schema.indexes) {
+    const tableKey = `${index.schemaName}.${index.tableName}`;
+    const indexKey = `${tableKey}.${index.indexName}`;
+
+    indexedTables.add(tableKey);
+    indexNameCount.set(indexKey, (indexNameCount.get(indexKey) ?? 0) + 1);
+  }
+
+  const tablesWithoutIndexes = schema.tables
+    .map((table) => `${table.schemaName}.${table.tableName}`)
+    .filter((tableKey) => !indexedTables.has(tableKey));
+
+  const duplicatedIndexNames = Array.from(indexNameCount.entries())
+    .filter(([, count]) => count > 1)
+    .map(([indexName]) => indexName);
+
+  return {
+    tablesWithoutIndexes,
+    duplicatedIndexNames,
+    indexedTables: Array.from(indexedTables),
+  };
+}

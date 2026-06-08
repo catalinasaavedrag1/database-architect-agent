@@ -1,6 +1,5 @@
-import { getDbConnection } from "../database/connection";
-import { metadataQueries } from "../database/metadataQueries";
-import { DatabaseForeignKey } from "./readSchema.tool";
+import { readForeignKeysMetadata } from "../database/metadataReader";
+import type { DatabaseForeignKey } from "./readSchema.tool";
 
 export interface ReadRelationshipsInput {
   schemaName?: string;
@@ -10,11 +9,7 @@ export interface ReadRelationshipsInput {
 export async function readRelationshipsTool(
   input: ReadRelationshipsInput = {}
 ): Promise<DatabaseForeignKey[]> {
-  const pool = await getDbConnection();
-  const result = await pool
-    .request()
-    .query<DatabaseForeignKey>(metadataQueries.getForeignKeys);
-  let relationships: DatabaseForeignKey[] = [...result.recordset];
+  let relationships: DatabaseForeignKey[] = [...(await readForeignKeysMetadata())];
 
   if (input.schemaName) {
     relationships = relationships.filter(

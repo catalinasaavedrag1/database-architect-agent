@@ -1,5 +1,10 @@
-import { getDbConnection } from "../database/connection";
-import { metadataQueries } from "../database/metadataQueries";
+import {
+  readColumnsMetadata,
+  readForeignKeysMetadata,
+  readIndexesMetadata,
+  readPrimaryKeysMetadata,
+  readTablesMetadata,
+} from "../database/metadataReader";
 
 export interface DatabaseTable {
   schemaName: string;
@@ -58,26 +63,19 @@ export interface FullDatabaseSchema {
 }
 
 export async function readSchemaTool(): Promise<FullDatabaseSchema> {
-  const pool = await getDbConnection();
-  const [
-    tablesResult,
-    columnsResult,
-    primaryKeysResult,
-    foreignKeysResult,
-    indexesResult,
-  ] = await Promise.all([
-    pool.request().query<DatabaseTable>(metadataQueries.getTables),
-    pool.request().query<DatabaseColumn>(metadataQueries.getColumns),
-    pool.request().query<DatabasePrimaryKey>(metadataQueries.getPrimaryKeys),
-    pool.request().query<DatabaseForeignKey>(metadataQueries.getForeignKeys),
-    pool.request().query<DatabaseIndex>(metadataQueries.getIndexes),
+  const [tables, columns, primaryKeys, foreignKeys, indexes] = await Promise.all([
+    readTablesMetadata(),
+    readColumnsMetadata(),
+    readPrimaryKeysMetadata(),
+    readForeignKeysMetadata(),
+    readIndexesMetadata(),
   ]);
 
   return {
-    tables: tablesResult.recordset,
-    columns: columnsResult.recordset,
-    primaryKeys: primaryKeysResult.recordset,
-    foreignKeys: foreignKeysResult.recordset,
-    indexes: indexesResult.recordset,
+    tables,
+    columns,
+    primaryKeys,
+    foreignKeys,
+    indexes,
   };
 }
